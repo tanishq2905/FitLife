@@ -25,8 +25,9 @@ require('./routes/workouts')(app);
 require('./routes/goals')(app);
 require('./routes/habits')(app);
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
 
 module.exports = app; // Vercel needs this, not just app.listen()
