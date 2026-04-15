@@ -36,14 +36,6 @@ const goalSchema = new mongoose.Schema({
     enum: ['active', 'completed', 'failed'],
     default: 'active',
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+}, { timestamps: true }); // handles createdAt + updatedAt automatically
 
 module.exports = mongoose.model('Goal', goalSchema);
