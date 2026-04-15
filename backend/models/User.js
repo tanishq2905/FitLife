@@ -1,44 +1,41 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+const router = require('express').Router();
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-const userSchema = new mongoose.Schema({
-  username: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    minlength: 3,
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    lowercase: true,
-  },
-  password: {
-    type: String,
-    required: true,
-    minlength: 6,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
+router.post('/register', async (req, res) => {
   try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
+    const { username, email, password } = req.body;
+
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(400).json({ message: 'User already exists' });
+
+    // Don't hash here — the pre('save') hook handles it
+    const user = new User({ username, email, password });
+    await user.save();
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.status(201).json({ token, user: { id: user._id, username, email } });
   } catch (err) {
-    next(err);
+    res.status(500).json({ message: err.message });
   }
 });
 
-userSchema.methods.comparePassword = async function(enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
-};
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-module.exports = mongoose.model('User', userSchema);
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+
+    // Use the model's comparePassword method
+    const match = await user.comparePassword(password);
+    if (!match) return res.status(400).json({ message: 'Invalid credentials' });
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: user._id, username: user.username, email } });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+module.exports = (app) => app.use('/api/auth', router);
