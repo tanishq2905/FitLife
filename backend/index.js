@@ -28,3 +28,5 @@ require('./routes/habits')(app);
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+module.exports = app; // Vercel needs this, not just app.listen()
